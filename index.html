@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reloj Sincronizado Inteligente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #eef2f5;
+        }
+        #reloj {
+            font-size: 32px;
+            font-weight: bold;
+            color: #004481; /* Azul estilo bancario */
+            padding: 20px 40px;
+            border: 2px solid #004481;
+            display: inline-block;
+            border-radius: 12px;
+            background-color: white;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controles {
+            font-size: 16px;
+            color: #333;
+            background: white;
+            display: inline-block;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: left;
+            max-width: 500px;
+        }
+        input[type="time"] {
+            padding: 10px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #004481;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background-color: #002d5a;
+        }
+        .instrucciones {
+            background: #fff8c4;
+            padding: 15px;
+            border-left: 5px solid #ffcc00;
+            margin-bottom: 25px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .estado-guardado {
+            color: #2e7d32;
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="reloj">Cargando hora...</div>
+    <br>
+    
+    <div class="controles">
+        <div class="instrucciones">
+            <strong>¿Cómo sincronizar exacto?</strong><br><br>
+            1. Mira el reloj del banco y piensa en una hora que va a llegar en unos segundos.<br>
+            2. Escríbela en la caja de abajo.<br>
+            3. Haz clic en <strong>"¡Sincronizar!"</strong> en el momento <strong>EXACTO</strong> en que el banco marque esa hora.<br><br>
+            <em>💾 La sincronización se guardará automáticamente para tus próximas visitas.</em>
+        </div>
+        
+        <div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
+            <input type="time" id="horaBanco" step="1" required>
+            <button onclick="sincronizarExacto()">¡Sincronizar!</button>
+        </div>
+        
+        <p style="text-align: center; margin-top: 20px; font-size: 13px; color: #777;">
+            Desfase guardado actualmente: <strong><span id="mostrarDesfase">-76.834</span> segundos</strong>.
+            <span id="mensajeEstado" class="estado-guardado"></span>
+        </p>
+    </div>
+
+    <script>
+        // Desfase por defecto fijado exactamente al de tu captura de pantalla (-76.834 segundos)
+        const DESFASE_PREDETERMINADO = -76834;
+        
+        let desfaseMilisegundos = DESFASE_PREDETERMINADO;
+        const guardado = localStorage.getItem('desfaseMilisegundosReloj');
+
+        if (guardado !== null) {
+            desfaseMilisegundos = parseInt(guardado);
+        } else {
+            desfaseMilisegundos = DESFASE_PREDETERMINADO;
+        }
+
+        function sincronizarExacto() {
+            const inputStr = document.getElementById('horaBanco').value;
+            if (!inputStr) {
+                alert("Por favor, ingresa una hora en la cajita primero.");
+                return;
+            }
+
+            const partes = inputStr.split(':');
+            const horasObj = parseInt(partes[0]);
+            const minutosObj = parseInt(partes[1]);
+            const segundosObj = parseInt(partes[2] || 0);
+
+            const ahoraPC = new Date(); 
+            const fechaObjetivo = new Date(ahoraPC.getFullYear(), ahoraPC.getMonth(), ahoraPC.getDate(), horasObj, minutosObj, segundosObj);
+
+            desfaseMilisegundos = fechaObjetivo.getTime() - ahoraPC.getTime();
+
+            // Guardar en la memoria local del navegador (LocalStorage)
+            localStorage.setItem('desfaseMilisegundosReloj', desfaseMilisegundos);
+
+            actualizarInterfazDesfase();
+
+            const msg = document.getElementById('mensajeEstado');
+            msg.textContent = "✓ Sincronización guardada en tu navegador";
+            setTimeout(() => { msg.textContent = ""; }, 4000);
+        }
+
+        function actualizarInterfazDesfase() {
+            document.getElementById('mostrarDesfase').textContent = (desfaseMilisegundos / 1000).toFixed(3);
+        }
+
+        function actualizarReloj() {
+            const tiempoAjustado = Date.now() + desfaseMilisegundos;
+            const ahora = new Date(tiempoAjustado);
+            
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anio = ahora.getFullYear();
+            
+            let horas = ahora.getHours();
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            const segundos = String(ahora.getSeconds()).padStart(2, '0');
+            const milisegundos = String(ahora.getMilliseconds()).padStart(3, '0');
+            
+            const ampm = horas >= 12 ? 'pm' : 'am';
+            
+            horas = horas % 12;
+            horas = horas ? horas : 12; 
+            const horasStr = String(horas).padStart(2, '0');
+            
+            const fechaFormateada = `${dia}/${mes}/${anio} - ${horasStr}:${minutos}:${segundos}.${milisegundos} ${ampm}`;
+            
+            document.getElementById('reloj').textContent = fechaFormateada;
+        }
+
+        actualizarInterfazDesfase();
+        setInterval(actualizarReloj, 10);
+        actualizarReloj(); 
+    </script>
+
+</body>
+</html>
